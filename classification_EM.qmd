@@ -1,0 +1,484 @@
+---
+title: "cours4"
+format: html
+editor: visual
+---
+## Librairies
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+
+## Création et présentation de notre loi gaussienne bimodale
+Création de notre vecteur de groupe
+
+```{r}
+mu_1 = 12.74
+mu_2 = 23.92
+sigma_1 = 5
+sigma_2 = 7.3
+
+prop_1 = 350/500
+prop_2 = 150/500
+vec_4_1 <- rnorm(350, mu_1, sigma_1)
+vec_4_2 <- rnorm(150, mu_2, sigma_2)
+
+vec_4 <- c(vec_4_1,vec_4_2)
+
+vec_4 <- sample(vec_4)
+
+#Pour l'exportation
+#write.csv(vec_4, "vecteur_4.csv")
+```
+
+
+```{r}
+
+# Création d'un data frame
+df <- data.frame(values = vec_4)
+
+# Plot de densité 
+ggplot(df, aes(x = values)) +
+  geom_density(fill = "blue", alpha = 0.5, color = "black") +
+  geom_vline(aes(xintercept = mu_1), color = "hotpink", linetype = "dashed", size = 1) +
+  geom_vline(aes(xintercept = mu_2), color = "orchid", linetype = "dashed", size = 1) +
+  labs(title = "Plot de densité de vec_4",
+       x = "Valeurs",
+       y = "Densité") +
+  theme_minimal() +
+  annotate("text", x = mu_1, y = 0.04, label = paste("mu 1 (", mu_1, ")", sep = ""), color = "hotpink") +
+  annotate("text", x = mu_2, y = 0.04, label = paste("mu 2 (", mu_2, ")", sep = ""), color = "orchid")
+
+```
+
+
+## Travail autour d'un vecteur "inconnu"
+
+L'objectif ici est de déterminer les paramètres qui ont permis de générer ce vecteur
+```{r}
+set.seed(100)
+vect1 = sample(c(rnorm(250,mean=2,sd=1),rnorm(250,mean=10,sd=1.5)))
+# Création d'un data frame
+df <- data.frame(values = vect1)
+
+# Plot de densité 
+ggplot(df, aes(x = values)) +
+  geom_density(fill = "blue", alpha = 0.5, color = "black")  +
+  labs(title = "Plot de densité du vecteur du groupe 1",
+       x = "Valeurs",
+       y = "Densité") +
+  theme_minimal() 
+  
+```
+Le graphique de densité nous permet de choisir 10 et 2 comme moyenne d'initialisation et 5 et 5 pour les sigma et 250/250 pour les proportions.
+
+Maintenant on va calculer la proba d'appartenance pour 3 points
+### Proba d'appartenance a un groupe pour le point x = 7
+On choisis 7 comme x d'initialisation
+```{r}
+proba_10 <- 1 / (5 * sqrt(2 * pi)) * exp(-1/2 * ((7 - 10) / 5)^2)
+
+```
+
+0.06664492
+
+```{r}
+proba_2 <-1 / (5 * sqrt(2 * pi)) * exp(-1/2 * ((7 - 2) / 5)^2)
+```
+
+```{r}
+C_1 <-(proba_10 *250/500)/ (proba_10*250/500+proba_2*1/2)
+```
+
+```{r}
+C_2 <-(proba_2 *250/500)/ (proba_10*250/500+proba_2*1/2)
+```
+Ainsi, il est plus probable que x=7 soit un point qui appartient au groupe dont on estime que la moyenne est 10, plutot qu'au groupe dont on estime que la moyenne est 2.
+
+### Proba d'appartenance a un groupe pour le point x = 2
+```{r}
+proba_10_2 <- 1 / (5 * sqrt(2 * pi)) * exp(-1/2 * ((2 - 10) / 5)^2)
+
+```
+
+0.06664492
+
+```{r}
+proba_2_2 <-1 / (5 * sqrt(2 * pi)) * exp(-1/2 * ((2 - 2) / 5)^2)
+```
+
+```{r}
+C_1_2 <-(proba_10_2 *250/500)/ (proba_10_2*250/500+proba_2_2*1/2)
+```
+
+```{r}
+
+C_2_2 <-(proba_2 *250/500)/ (proba_10*250/500+proba_2*1/2)
+```
+
+Ainsi, il est plus probable que x=2 soit un point qui appartient au groupe dont on estime que la moyenne est 2, plutot qu'au groupe dont on estime que la moyenne est 10.
+
+### Proba d'appartenance a un groupe pour le point x = 10
+```{r}
+proba_10_10 <- 1 / (5 * sqrt(2 * pi)) * exp(-1/2 * ((10 - 10) / 5)^2)
+
+```
+
+0.06664492
+
+```{r}
+proba_2_10 <-1 / (5 * sqrt(2 * pi)) * exp(-1/2 * ((10 - 2) / 5)^2)
+```
+
+```{r}
+C_1_10 <-(proba_10_10 *250/500)/ (proba_10_10*250/500+proba_2_10*1/2)
+```
+
+```{r}
+
+C_2_10 <-(proba_2_10 *250/500)/ (proba_10_10*250/500+proba_2_10*1/2)
+```
+
+Ainsi, il est plus probable que x=10 soit un point qui appartient au groupe dont on estime que la moyenne est 10, plutot qu'au groupe dont on estime que la moyenne est 2.
+
+### Fonction de probabilité d'appartenance
+
+Maintenant nous pouvons généraliser nos calculs des probabilité d'appartenance d'un point a une classe pour trouver la fonction qui nous permet de calculer la probabilité d'appartenance de n'importe quel point à une classe.
+```{r}
+proba_appart <- function(x, mu1, sigma1,mu2,sigma2, p1, p2){
+  proba_grp_1 <- 1 / (sigma1 * sqrt(2 * pi)) * exp(-1/2 * ((x - mu1) / sigma1)^2)
+  proba_grp_2 <- 1 / (sigma2 * sqrt(2 * pi)) * exp(-1/2 * ((x - mu2) / sigma2)^2)
+  C_1 <-(proba_grp_1 *p1)/ (proba_grp_1*p1+proba_grp_2*p2)
+  C_2 <- (proba_grp_2 *p2)/ (proba_grp_1*p1+proba_grp_2*p2)
+  return(c(C_1,C_2))}
+
+#test
+pb<-proba_appart(2,10, 5,2,5,1/2,1/2)
+pb[2]
+```
+Puis on calcule la proba d'appartennance de chaque point aux deux classes 
+```{r}
+df <- as.data.frame(matrix(0, nrow = 500, ncol = 3))
+
+for (i in seq_along(vect1)) {
+  df[i,1] <- vect1[i]
+  df[i,2] <- proba_appart(vect1[i],10, 5,2,5,1/2,1/2)[1]
+  df[i,3] <- proba_appart(vect1[i],10, 5,2,5,1/2,1/2)[2]
+  
+}
+df
+```
+Dans la colonne V1 on a chaque point du vecteur 1, dans la colonne V2 on a la proba d'appartenance de chaque point à la classe 1 (celui dont on estime visuellement que la moyenne est de 10). La colonne V3 affiche 
+
+
+
+On fait la partie Maximisation
+
+```{r}
+df<-t(df)
+
+
+```
+
+```{r}
+mean_w <- function(df){
+  
+  mean_1 <- sum(df[,1]*df[,2])/sum(df[,2])
+  mean_2 <- sum(df[,1]*df[,3])/sum(df[,3])
+  
+  var_w_1 <- sqrt(1/500 * sum((df[,1]-mean_1)**2))
+  
+  var_w_2 <- sqrt(1/500 * sum((df[,1]-mean_2)**2))
+  
+  prop_w_1 <- 1/500 * sum(df[,2])
+  prop_w_2 <- 1/500 * sum(df[,3])
+  return(c(mean_1,mean_2,var_w_1,var_w_2,prop_w_1,prop_w_2))
+  
+}
+
+theta <- mean_w(df)
+theta
+```
+
+
+
+
+```{r}
+# df<- t(df)
+# for (i in seq_along(vect1)) {
+#   df[1,i] <- vect1[i]
+#   df[2,i] <- proba_appart(vect1[i],theta[1],theta[3] ,theta[2],theta[4],theta[5],theta[6])[1]
+#   df[3,i] <- proba_appart(vect1[i],theta[1],theta[3] ,theta[2],theta[4],theta[5],theta[6])[2]
+#   
+# }
+# df <-t(df)
+
+```
+
+```{r}
+# E_M <- function(vect1,x){
+#   
+# df <- as.data.frame(matrix(0, nrow = 500, ncol = 3))
+# 
+# for (i in seq_along(vect1)) {
+#   df[i,1] <- vect1[i]
+#   df[i,2] <- proba_appart(vect1[i],10, 5,2,5,1/2,1/2)[1]
+#   df[i,3] <- proba_appart(vect1[i],10, 5,2,5,1/2,1/2)[2]
+#   
+# }
+#    
+#   # M             
+# 
+#   for (i in x){
+#   theta <- mean_w(df)
+#   theta
+#   for (i in range(500)) {
+#     df[i,2] <- proba_appart(df[i,1],theta[1],theta[3] ,theta[2],theta[4],theta[5],theta[6])[1]
+#     df[i,3] <- proba_appart(df[i,1],theta[1],theta[3] ,theta[2],theta[4],theta[5],theta[6])[2]
+#   }
+# 
+#   }
+#   return(theta)
+# }
+# E_M(vect1,10)
+```
+```{r}
+# E_M <- function(vect1, n_iter) {
+#   df <- as.data.frame(matrix(0, nrow = length(vect1), ncol = 3))
+#   colnames(df) <- c("x", "w1", "w2")
+# 
+#   # Initialisation avec des paramètres arbitraires
+#   for (i in seq_along(vect1)) {
+#     probs <- proba_appart(vect1[i], 10, 5, 2, 5, 0.5, 0.5)
+#     df[i, ] <- c(vect1[i], probs[1], probs[2])
+#   }
+# 
+#   # Boucle EM
+#   for (j in seq_len(n_iter)) {
+#     theta <- mean_w(df)
+# 
+#     for (i in seq_len(nrow(df))) {
+#       probs <- proba_appart(df[i, 1], theta[1], theta[3], theta[2], theta[4], theta[5], theta[6])
+#       df[i, 2] <- probs[1]
+#       df[i, 3] <- probs[2]
+#     }
+#   }
+# 
+#   return(theta)
+# }
+# 
+# # Exemple d'appel
+# E_M(vect1, 100)
+```
+
+Fonction pour calculer la log vraismeblance
+```{r}
+log_likelihood <- function(df, mu1, sigma1, mu2, sigma2, p1, p2) {
+    ll <- sum(log(p1 * dnorm(df$x, mean = mu1, sd = sigma1) + p2 * dnorm(df$x, mean = mu2, sd = sigma2)))
+    return(ll)
+}
+```
+
+On assemble tout ce qu'on a vu précedemment pour faire une fonction qui nous fait l'algorithme EM jusqu'à convergence ou jusqu'à la limite d'itération
+```{r}
+E_M <- function(vect1, n_iter = 100, mu1_init = 10, mu2_init = 2, sigma1_init = 5, sigma2_init = 5, p1_init = 0.5, p2_init = 0.5) {
+
+  # Initialisation du data frame pour les probabilités d'appartenance
+  df <- data.frame(
+    x = vect1,
+    w1 = rep(NA, length(vect1)),
+    w2 = rep(NA, length(vect1))
+  )
+
+  # initialisation des paramètres
+  mu1 <- mu1_init
+  mu2 <- mu2_init
+  sigma1 <- sigma1_init
+  sigma2 <- sigma2_init
+  p1 <- p1_init
+  p2 <- p2_init
+
+
+  # Étape E (Expectation) : Initialisation des probabilités d'appartenance
+  for (i in seq_along(vect1)) {
+    probs <- proba_appart(vect1[i], mu1, sigma1, mu2, sigma2, p1, p2)
+    df$w1[i] <- probs[1]
+    df$w2[i] <- probs[2]
+  }
+  
+  # Initialisation de la log-vraisemblance
+  ll_old <- log_likelihood(df, mu1, sigma1, mu2, sigma2, p1, p2)
+
+  # Boucle EM
+  for (iter in 1:n_iter) {
+
+    # Étape M (Maximization) : Mise à jour des paramètres en prenant en compte les proba d'appartenance calculé precedemment
+    
+    mu1_new <- sum(df$x * df$w1)/ sum(df$w1)
+    mu2_new <- sum(df$x * df$w2) / sum(df$w2)
+    
+    sigma1_new <- sqrt(sum(df$w1 * (df$x - mu1_new)^2) / sum(df$w1))
+    sigma2_new <- sqrt(sum(df$w2 * (df$x - mu2_new)^2) / sum(df$w2))
+    
+    p1_new <- mean(df$w1)
+    p2_new <- mean(df$w2)
+
+    # Affichage des paramètres à chaque itération
+    cat(sprintf("Itération %d: mu1 = %.4f, mu2 = %.4f, sigma1 = %.4f, sigma2 = %.4f, p1 = %.4f, p2 = %.4f\n",
+                iter, mu1_new, mu2_new, sigma1_new, sigma2_new, p1_new, p2_new))
+
+    # Calcul de la log-vraisemblance
+    ll_new <- log_likelihood(df, mu1_new, sigma1_new, mu2_new, sigma2_new, p1_new, p2_new)
+    cat(sprintf("Log-vraisemblance : %.4f\n", ll_new))
+
+    # Critère de convergence : variation relative des paramètres
+    delta_mu1 <- abs(mu1_new - mu1) 
+    delta_mu2 <- abs(mu2_new - mu2) 
+    delta_sigma1 <- abs(sigma1_new - sigma1)
+    delta_sigma2 <- abs(sigma2_new - sigma2)
+    delta_p1 <- abs(p1_new - p1) / 
+
+    # et de la log-vraisemblance
+    delta_ll <- abs(ll_new - ll_old)
+
+    # Si tous les deltas sont inférieurs à la tolérance, on arrête la boucle, l'algorithme a cvg
+    if (delta_mu1 < tol && delta_mu2 < tol && delta_sigma1 < tol && delta_sigma2 < tol && delta_p1 < tol && delta_ll < tol) {
+      cat(sprintf("Convergence atteinte à l'itération %d.\n", iter))
+      break
+    }
+
+    # Mise à jour des paramètres et de la log-vraisemblance
+    mu1 <- mu1_new
+    mu2 <- mu2_new
+    sigma1 <- sigma1_new
+    sigma2 <- sigma2_new
+    p1 <- p1_new
+    p2 <- p2_new
+    ll_old <- ll_new
+
+    # Étape E (Expectation) : Mise à jour des probabilités d'appartenance
+    for (i in seq_along(vect1)) {
+      probs <- proba_appart(vect1[i], mu1, sigma1, mu2, sigma2, p1, p2)
+      df$w1[i] <- probs[1]
+      df$w2[i] <- probs[2]
+    }
+  }
+
+  # Retourne les paramètres estimés
+  return(list(mu1 = mu1, mu2 = mu2, sigma1 = sigma1, sigma2 = sigma2, p1 = p1, p2 = p2))
+}
+
+# Exemple d'appel
+resultats_EM <- E_M(vect1, n_iter = 100)
+print(resultats_EM)
+
+```
+
+```{r}
+E_M <- function(vect1, n_iter = 100, mu1_init = 10, mu2_init = 2, sigma1_init = 5, sigma2_init = 5, p1_init = 0.5, p2_init = 0.5, tol = 1e-6) {
+
+  # Initialisation du data frame pour stocker les données et les probabilités d'appartenance
+  df <- data.frame(
+    x = vect1,
+    w1 = rep(NA, length(vect1)),
+    w2 = rep(NA, length(vect1))
+  )
+
+  # Paramètres initiaux
+  mu1 <- mu1_init
+  mu2 <- mu2_init
+  sigma1 <- sigma1_init
+  sigma2 <- sigma2_init
+  p1 <- p1_init
+  p2 <- p2_init
+
+  # Fonction pour calculer les probabilités d'appartenance
+  proba_appart <- function(x, mu1, sigma1, mu2, sigma2, p1, p2) {
+    proba_grp_1 <- p1 * dnorm(x, mean = mu1, sd = sigma1)
+    proba_grp_2 <- p2 * dnorm(x, mean = mu2, sd = sigma2)
+    C_1 <- proba_grp_1 / (proba_grp_1 + proba_grp_2)
+    C_2 <- proba_grp_2 / (proba_grp_1 + proba_grp_2)
+    return(c(C_1, C_2))
+  }
+
+  # Fonction pour calculer la log-vraisemblance
+  log_likelihood <- function(df, mu1, sigma1, mu2, sigma2, p1, p2) {
+    ll <- sum(log(p1 * dnorm(df$x, mean = mu1, sd = sigma1) + p2 * dnorm(df$x, mean = mu2, sd = sigma2)))
+    return(ll)
+  }
+
+  # Étape E (Expectation) : Initialisation des probabilités d'appartenance
+  for (i in seq_along(vect1)) {
+    probs <- proba_appart(vect1[i], mu1, sigma1, mu2, sigma2, p1, p2)
+    df$w1[i] <- probs[1]
+    df$w2[i] <- probs[2]
+  }
+
+  # Initialisation de la log-vraisemblance
+  ll_old <- log_likelihood(df, mu1, sigma1, mu2, sigma2, p1, p2)
+
+  # Boucle EM
+  for (iter in 1:n_iter) {
+
+    # Étape M (Maximization) : Mise à jour des paramètres
+    mu1_new <- weighted.mean(df$x, df$w1)
+    mu2_new <- weighted.mean(df$x, df$w2)
+    sigma1_new <- sqrt(sum(df$w1 * (df$x - mu1_new)^2) / sum(df$w1))
+    sigma2_new <- sqrt(sum(df$w2 * (df$x - mu2_new)^2) / sum(df$w2))
+    p1_new <- mean(df$w1)
+    p2_new <- mean(df$w2)
+
+    # Affichage des paramètres à chaque itération
+    cat(sprintf("Itération %d: mu1 = %.4f, mu2 = %.4f, sigma1 = %.4f, sigma2 = %.4f, p1 = %.4f, p2 = %.4f\n",
+                iter, mu1_new, mu2_new, sigma1_new, sigma2_new, p1_new, p2_new))
+
+    # Calcul de la log-vraisemblance
+    ll_new <- log_likelihood(df, mu1_new, sigma1_new, mu2_new, sigma2_new, p1_new, p2_new)
+    cat(sprintf("Log-vraisemblance : %.4f\n", ll_new))
+
+    # Critère de convergence : variation relative des paramètres
+    delta_mu1 <- abs(mu1_new - mu1) / abs(mu1) 
+    delta_mu2 <- abs(mu2_new - mu2) / abs(mu2)
+    delta_sigma1 <- abs(sigma1_new - sigma1) / abs(sigma1)
+    delta_sigma2 <- abs(sigma2_new - sigma2) / abs(sigma2)
+    delta_p1 <- abs(p1_new - p1) / abs(p1) 
+
+    #et variation de la log-vraisemblance
+    delta_ll <- abs(ll_new - ll_old) / (abs(ll_old) + 1e-10)
+
+    # Si tous les deltas sont inférieurs à la tolérance, on arrête la boucle
+    if (delta_mu1 < tol && delta_mu2 < tol && delta_sigma1 < tol && delta_sigma2 < tol && delta_p1 < tol && delta_ll < tol) {
+      cat(sprintf("Convergence atteinte à l'itération %d.\n", iter))
+      break
+    }
+
+    # Mise à jour des paramètres et de la log-vraisemblance
+    mu1 <- mu1_new
+    mu2 <- mu2_new
+    sigma1 <- sigma1_new
+    sigma2 <- sigma2_new
+    p1 <- p1_new
+    p2 <- p2_new
+    ll_old <- ll_new
+
+    # Étape E (Expectation) : Mise à jour des probabilités d'appartenance
+    for (i in seq_along(vect1)) {
+      probs <- proba_appart(vect1[i], mu1, sigma1, mu2, sigma2, p1, p2)
+      df$w1[i] <- probs[1]
+      df$w2[i] <- probs[2]
+    }
+  }
+
+  # Retourne les paramètres estimés
+  return(list(mu1 = mu1, mu2 = mu2, sigma1 = sigma1, sigma2 = sigma2, p1 = p1, p2 = p2))
+}
+
+#test
+
+resultats_EM <- E_M(vect1, n_iter = 100, tol = 0.1)
+print(resultats_EM)
+
+```
+
+  
+  
