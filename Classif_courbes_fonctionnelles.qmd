@@ -1,0 +1,161 @@
+---
+title: "Classif_loi_melange"
+format: html
+editor: visual
+---
+
+```{r}
+dt <- read.csv("data.csv", header = TRUE)
+```
+
+```{r}
+data<- dt[,-1]
+
+```
+
+```{r}
+library(dplyr)
+library(mdsr)
+```
+
+```{r}
+data$V8[4]<-27.2197645017588
+data$V20[69]<-37.143573590775
+data$V8<-as.numeric(data$V8)
+data$V20<-as.numeric(data$V20)
+```
+
+```{r}
+km.out <- kmeans(data, centers = 3, nstart = 20)
+km.out$cluster # a vector specifying which cluster
+length(km.out$cluster)
+
+data$Kmean_raw <- km.out$cluster
+```
+
+```{r}
+dt1 <- data[data$Kmean_raw == 1, ]
+dt2 <- data[data$Kmean_raw == 2, ]
+dt3 <- data[data$Kmean_raw == 3, ]
+```
+
+```{r}
+tdt1 <- t(dt1) 
+tdt2 <- t(dt2) 
+tdt3 <- t(dt3) 
+```
+
+```{r}
+matplot(tdt1,type="l", col="red")
+matplot(tdt2,type="l", col="blue")
+matplot(tdt3,type="l", col="black")
+```
+
+```{r}
+seg_1 <- data[, 1:33]
+length(seg_1)
+seg_2 <- data[, 34:66]
+length(seg_2)
+seg_3 <- data[, 67:100]
+length(seg_3)
+```
+
+```{r}
+X <- seq(1:33)
+seg_1<- t(seg_1)
+length(seg_1[,1])
+
+param_seg_1 = c()
+for (k in 1:150){
+  
+  coef <- lm(seg_1[,k]~X)$coefficients[2]
+  param_seg_1 = c(param_seg_1,coef)
+}
+
+
+seg_2 <- t(seg_2)
+
+length(seg_2[,1])
+
+X <- seq(1:33)
+param_seg_2 = c()
+for (k in 1:150){
+  
+  coef <- lm(seg_2[,k]~X)$coefficients[2]
+  param_seg_2 = c(param_seg_2,coef)
+}
+
+
+seg_3<-t(seg_3)
+length(seg_3[,1])
+
+X<-seq(1:34)
+param_seg_3 = c()
+for (k in 1:150){
+  
+  coef <- lm(seg_3[,k]~X)$coefficients[2]
+  param_seg_3 = c(param_seg_3,coef)
+}
+
+```
+
+```{r}
+library(FactoMineR)
+```
+
+```{r}
+PCA(param)
+```
+
+```{r}
+param <- cbind(param_seg_1, param_seg_2, param_seg_3)
+param
+```
+
+```{r}
+km.out <- kmeans(param, centers = 3, nstart = 40)
+km.out$cluster # a vector specifying which cluster
+length(km.out$cluster)
+
+param <- cbind(param_seg_1, param_seg_2, param_seg_3) 
+```
+
+\[1\] 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 \[46\] 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 \[91\] 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 \[136\] 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+
+```{r}
+data$Kmean <- km.out$cluster
+data$Kmean
+```
+
+```{r}
+dt1 <- data[data$Kmean == 1, ]
+dt2 <- data[data$Kmean == 2, ]
+dt3 <- data[data$Kmean == 3, ]
+```
+
+```{r}
+tdt1 <- t(dt1) 
+tdt2 <- t(dt2) 
+tdt3 <- t(dt3) 
+```
+
+```{r}
+matplot(tdt1,type="l", col="red")
+matplot(tdt2,type="l", col="blue")
+matplot(tdt3,type="l", col="black")
+```
+
+```{r}
+library(EMCluster)
+```
+
+```{r}
+ret <- init.EM(param, nclass = 3)
+ret.new <- assign.class(param, ret, return.all = FALSE)
+str(ret.new)
+```
+
+```{r}
+ret.new$class
+
+```
