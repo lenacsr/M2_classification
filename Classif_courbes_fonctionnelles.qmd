@@ -4,18 +4,27 @@ format: html
 editor: visual
 ---
 
-```{r}
-dt <- read.csv("data.csv", header = TRUE)
-```
-
-```{r}
-data<- dt[,-1]
-
-```
+## Libraries
 
 ```{r}
 library(dplyr)
 library(mdsr)
+library(FactoMineR)
+library(EMCluster)
+```
+
+## Données
+
+Chargement et nettpyage des données. Deux entrées posent problème : **Ligne 4 colonne V8** et Ligne **69 colonne V20**.
+
+```{r}
+dt <- read.csv("data.csv", header = TRUE)
+dt
+```
+
+```{r}
+data<- dt[,-1]
+data
 ```
 
 ```{r}
@@ -23,7 +32,20 @@ data$V8[4]<-27.2197645017588
 data$V20[69]<-37.143573590775
 data$V8<-as.numeric(data$V8)
 data$V20<-as.numeric(data$V20)
+data$V8[4]
+data$V20[69]
 ```
+
+On plot les données pour voir à quoi elles ressemblent.
+
+```{r}
+dta <- t(data)
+matplot(dta,type="l")
+```
+
+## K-means 1.0
+
+On teste en premier lieu une classification avec un algoritme K-means pour voir s'il fonctionne.
 
 ```{r}
 km.out <- kmeans(data, centers = 3, nstart = 20)
@@ -32,6 +54,10 @@ length(km.out$cluster)
 
 data$Kmean_raw <- km.out$cluster
 ```
+
+### Plot des résultats du K-means
+
+On sépare les données selon leur cluster et on les plot.
 
 ```{r}
 dt1 <- data[data$Kmean_raw == 1, ]
@@ -51,6 +77,22 @@ matplot(tdt2,type="l", col="blue")
 matplot(tdt3,type="l", col="black")
 ```
 
+A première vue les résultats n'ont pas l'air d'être séparés proprement du tout. Nous allons donc tenter une autre approche. En observant les données sur le premier plot, on remarque deux points au niveau desquels les tendances générales des courbes s'inversent : autour de **33** et autour de **66**.
+
+```{r}
+matplot(dta,type="l")
+abline(v = 33, lwd = 2, col = "red")
+abline(v = 66, lwd = 2, col = "red")
+```
+
+On propose donc de découper chaque courbe en trois parties :
+
+-   **1** à **33**
+
+-   **34** à **66**
+
+-   **67** à **100**
+
 ```{r}
 seg_1 <- data[, 1:33]
 length(seg_1)
@@ -60,67 +102,67 @@ seg_3 <- data[, 67:100]
 length(seg_3)
 ```
 
+Ensuite, on va ajuster un modèle de régression pour chaque partie de courbe et récupérer les paramètres dans les vecteurs **param_seg_1/2/3**.
+
 ```{r}
+### SEGMENT 1
 X <- seq(1:33)
 seg_1<- t(seg_1)
-length(seg_1[,1])
 
 param_seg_1 = c()
 for (k in 1:150){
-  
   coef <- lm(seg_1[,k]~X)$coefficients[2]
   param_seg_1 = c(param_seg_1,coef)
 }
 
-
+### SEGMENT 2
+X <- seq(1:33)
 seg_2 <- t(seg_2)
 
-length(seg_2[,1])
-
-X <- seq(1:33)
 param_seg_2 = c()
 for (k in 1:150){
-  
   coef <- lm(seg_2[,k]~X)$coefficients[2]
   param_seg_2 = c(param_seg_2,coef)
 }
 
-
-seg_3<-t(seg_3)
-length(seg_3[,1])
-
+### SEGMENT 3
 X<-seq(1:34)
+seg_3<-t(seg_3)
+
 param_seg_3 = c()
 for (k in 1:150){
-  
   coef <- lm(seg_3[,k]~X)$coefficients[2]
   param_seg_3 = c(param_seg_3,coef)
 }
 
 ```
 
-```{r}
-library(FactoMineR)
-```
-
-```{r}
-PCA(param)
-```
+On récupère les vecteurs paramètres et on les concatène dans une seule matrice **param**.
 
 ```{r}
 param <- cbind(param_seg_1, param_seg_2, param_seg_3)
 param
 ```
 
+On peut ensuite passer les paramètres dans une PCA pour observer leur distribution.
+
+```{r}
+PCA(param)
+```
+
+On voit que la PCA les sépare nettement en trois groupes.
+
+## K-means 2.0
+
+On effetue ensuite un autre k-means, mais cette fois sur les paramètres des régressions de chaque bout de courbe.
+
 ```{r}
 km.out <- kmeans(param, centers = 3, nstart = 40)
 km.out$cluster # a vector specifying which cluster
 length(km.out$cluster)
-
-param <- cbind(param_seg_1, param_seg_2, param_seg_3) 
 ```
 
-\[1\] 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 \[46\] 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 \[91\] 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 \[136\] 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+### Plot des résultats du K-means
 
 ```{r}
 data$Kmean <- km.out$cluster
@@ -145,9 +187,9 @@ matplot(tdt2,type="l", col="blue")
 matplot(tdt3,type="l", col="black")
 ```
 
-```{r}
-library(EMCluster)
-```
+Déjà les résultats ont une meilleure tête. Cependant, on peut faire mieux.
+
+## Algoritme EM
 
 ```{r}
 ret <- init.EM(param, nclass = 3)
@@ -158,4 +200,28 @@ str(ret.new)
 ```{r}
 ret.new$class
 
+```
+
+### Plot des résultats de l'algoritme EM
+
+```{r}
+data$EM <- ret.new$class
+```
+
+```{r}
+dt_em_1 <- data[data$EM == 1, ]
+dt_em_2 <- data[data$EM == 2, ]
+dt_em_3 <- data[data$EM == 3, ]
+```
+
+```{r}
+tdtem1 <- t(dt_em_1) 
+tdtem2 <- t(dt_em_2) 
+tdtem3 <- t(dt_em_3)
+```
+
+```{r}
+matplot(tdtem1,type="l", col="red")
+matplot(tdtem2,type="l", col="blue")
+matplot(tdtem3,type="l", col="black")
 ```
