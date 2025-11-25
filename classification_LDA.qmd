@@ -1,0 +1,55 @@
+---
+title: "LDA"
+format: html
+editor: visual
+---
+
+## Topic Modelling et Distribution de DIrichlet
+
+### Introduction au Topic Modelling
+
+La *modélisation thématique* (topic modelling) vise à extraire les sujets (appalés "topics") présents dans un ensemble de documents textuels (aussi "corpus"). L’algorithme étudié dans les papiers scientifiques proposés est *l’allocation de Dirichlet latente (Latent Dirichlet Allocation, ou LDA)*, qui repose sur le principe que chaque document traite de plusieurs thèmes dans des propotions variées, et que chaque mots se retrouvent dans chaque thèmes dans des proportions variées.
+
+Dans LDA, chaque document est représenté comme un mélange de K topics, et chaque topic comme une distribution de probabilités sur les mots du vocabulaire global. Cette approche s'inscrit dans la famille des *modèles de mélange* probabilistes (mélange gaussien, mixture models, etc.).
+
+La particularité de la LDA est que les proportions de topics dans un document $(\theta)$ et que les proportions de mots dans un topic $(\phi)$ sont modélisées comme des *variables aléatoires* suivant une distribution de Dirichlet et pas une Gaussienne (contrairement au modèle de mélange).
+
+### Distribution de Dirichlet
+
+La *distribution de Dirichlet* est une loi de probabilité sur des vecteurs de probabilités : elle code "comment sont réparties des proportions" (par exemple, la répartition des topics dans un document, ou les mots dans un topic). Elle est paramétrée par un vecteur d'hyperparamètres $(\alpha)$. -\> Cet hyperparamètre combine document et topic pour chaque mot : Critère d'affinité topic x Critère affinité document.
+
+Dans LDA : - Pour chaque document, on tire un vecteur $(\theta \sim Dirichlet(\alpha))$, où $(\theta_k)$ est le poids du topic $(k)$ dans ce document. - Pour chaque topic, on tire un vecteur $(\phi \sim Dirichlet(\beta))$, où $(\phi_v)$ est la probabilité du mot $(v)$ dans ce topic.
+
+La Dirichlet encode ainsi l’intuition que chaque document est principalement sur quelques topics, mais a toujours des chances non nulles de toucher d’autres sujets.
+
+La *distribution de Dirichlet* permet à LDA : - De modéliser la variabilité des proportions de topics (ou de mots) dans documents/topics. - De favoriser des mélanges "parcimonieux" (majorité de poids sur peu de topics par documents, comme dans des textes réels).
+
+Dans la famille des *modèles de mélange, LDA se distingue par la modélisation de deux niveaux de mélange (topic et document), chacun contrôlé par une *a priori Dirichlet.
+
+Ainsi, la Dirichlet assure le mélange probabiliste à chaque niveau non observable (les proportions par topic/document).
+
+### Processus génératif de LDA
+
+Voici comment on peut générer un corpus/ensemble de texte selon LDA :
+
+1.  *Pour chaque topic* $(k)$ $(k = 1 , 2, ..., K)$, tirer une distribution sur les mots : $(\phi_k \sim Dirichlet(\beta)$
+2.  *Pour chaque document* $(d)$ :
+    -   Tirer la proportion de topics du document : $\theta_d \sim Dirichlet(\alpha)$
+    -   Pour chaque mot $(w_{dn})$ du document :
+        1.  Tirer le topic latent $(z_{dn} \sim Multinomiale(\theta_d))$
+        2.  Tirer le mot observé $(w_{dn} \sim Multinomiale(\phi_{z_{dn}}))$
+
+### Exemple
+
+Illustration avec le mini corpus présenté en cours:
+
+| Document | Texte                                      |
+|----------|--------------------------------------------|
+| Doc 1    | banque, ... investit, dette, ... état      |
+| Doc 2    | banque, ... prête, argent, ... dette       |
+| Doc 3    | poisson, ... bon, manger, ... santé        |
+| Doc 4    | manger, ... poisson, bon, lotte, ... santé |
+
+Avec $(K = 2)$ topics : - *k1* : économie, finance - *k2* : alimentation, nutrition
+
+LDA va "distribuer" automatiquement ce type de séparation, selon la cooccurrence des mots dans chaque document et chaque mot dans chaque topic et chaque topic dans chaque document.
