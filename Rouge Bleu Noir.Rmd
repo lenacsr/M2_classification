@@ -1,0 +1,94 @@
+---
+title: "Rouge-Bleu-Noir"
+output: html_document
+date: "2025-11-24"
+---
+
+#Présentation
+
+Le jeu de données a une structure particulière : il comporte trois parties distinctes. Une première partie qui contient les notes de 1063 consommateurs sur 30 saumons, il s'agit donc de données quantitatives (bloc rouge). Une deuxième partie comporte les réponses des consommateurs à des questions sur leur mode de consommation, les données sont qualitatives (bloc bleu). Enfin, le troisième bloc comporte des informations physico-chimique sur ces 30 saumons (bloc noir).
+
+Dans un premier temps, on réalise une classification sur le bloc rouge pour vérifier que les données soient exploitables.
+Dans un second temps, on caractérise nos classes avec les variables supplémentaire pour voir si elles ont du sens.
+Enfin, il faut que les données physico-chimiques nous apportent un niveau de confiance ou pas dans nos conclusions (interpretabilite).
+
+```{r}
+library(FactoMineR)
+saumon <- read.csv("saumon.csv", sep=";", header=TRUE, dec=",")
+saumon <- saumon[-1003,]
+summary(saumon)
+
+rouge <- saumon[1:1063,3:32]
+noir <- saumon [1063:1088,1:32]
+bleu <- saumon[1:1063,33:100]
+
+
+
+```
+
+Les données sont importés selon les blocs définis précédement, on va pouvoi rprocéder à la première étape qui consiste à réaliser une classification ascendante hiérarchique.
+1ère étape
+
+```{r}
+res.PCA<-PCA(rouge, scale.unit=FALSE,graph=FALSE)
+names(res.PCA)
+plot(res.PCA, label = "none", col.ind = "red")
+plot.PCA(res.PCA, choix = "var")
+res.HCPC<-HCPC(res.PCA,nb.clust=3,graph=FALSE)
+names(res.HCPC)
+
+res.HCPC$data.clust
+```
+
+La première étape nous donne trois groupes de consommateurs. Or, il est difficile d'interpréter ces groupes sans les avoir caractériser avec les variables supplémentaires. On va donc réaliser une ACP en projetant le bloc bleu en supplémentaire
+
+2ème étape
+
+```{r}
+
+res.PCA2 <- PCA(saumon[1:1063,3:100], quali.sup=c(31:98), graph = FALSE)
+plot(res.PCA2, label = "none",col.quali ="blue",col.ind = "red")
+res.HCP2 <- HCPC(res.PCA2, nb.clust = 3, graph = FALSE)
+
+#résultats pour le groupe 1
+res.HCP2$desc.var$category$`1`[1:5,]
+
+#résultats pour le groupe 3
+res.HCP2$desc.var$category$`3`[1:5,]
+```
+Examinons le groupe 1 :
+Le groupe 1 est un groupe de consommateurs qui trouvent les saumons trop salés, qui aiment les saumons sauvages et brillants. En revanche, ils préfèrent que le saumon ne soit pas ferme et qu'il ne soit pas accompagné de citron. 
+
+On voudrait s'assurer que les caractéristiques physico-chimique concordent avec les caractéristiques des groupes que nous avons déterminées. On projette le bloc noir sur le nuage des individus. On voudrait retrouver l'individu supplémentaire "concentration en sel" soit éloigné de notre groupe 1. 
+
+Le groupe 3 à l'inverse préfère les saumons salés.
+
+```{r}
+res.PCA3 <- PCA(saumon[,3:100], quali.sup=c(31:98), 
+                ind.sup = c(1063:1087), graph = FALSE)
+plot.PCA(res.PCA3, label = "ind.sup", col.ind = "red", 
+         col.ind.sup = "black", col.quali ="blue")
+plot.PCA(res.PCA, choix = "var")
+
+res.HCP3 <- HCPC(res.PCA3, nb.clust = 3, graph = FALSE)
+
+coord <- res.PCA3$ind.sup$coord
+coord.df <- as.data.frame(coord)
+
+clusters <- res.HCP3$desc.axes$call$X
+
+GC <- aggregate(clusters[, c("Dim.1", "Dim.2", "Dim.3", "Dim.4", "Dim.5")], 
+                by = list(cluster = clusters$clust),FUN = mean)
+
+assign_clusters <- function(row, GC) {
+  dists <- apply(GC[, 2:6], 1, function(center) sum((row - center)^2))^0.5
+  return(which.min(dists))
+}
+
+coord.df$cluster_dist <- apply(coord.df[, 1:5], 
+                                      1, assign_clusters, GC = GC)
+
+head(coord.df)
+```
+On remarque que l'individu supplémentaire 1068 "concentration en sel" est dans le groupe 3, les saumons du groupe 3 sont donc plutôt salés. Ces résultats concordent avec ceux trouvés prédedemment, ce qui nous rassure sur la consistance de nos données. Elles semblent plutôt fiables et le panel cohérent.
+
