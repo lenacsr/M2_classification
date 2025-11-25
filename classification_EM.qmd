@@ -25,11 +25,11 @@ editor: visual
 ```{r setup, include=FALSE}
 # Configuration globale des chunks
 knitr::opts_chunk$set(
-  echo = TRUE,              # Afficher le code
-  warning = FALSE,          # Masquer les warnings
-  message = FALSE,          # Masquer les messages
-  fig.align = "center",     # Centrer les figures
-  fig.width = 10,           # Largeur des figures
+  echo = TRUE, # Afficher le code
+  warning = FALSE, # Masquer les warnings
+  message = FALSE, # Masquer les messages
+  fig.align = "center", # Centrer les figures
+  fig.width = 10, # Largeur des figures
   fig.height = 6,           
   out.width = "80%",        
   cache = FALSE             
@@ -231,6 +231,7 @@ df<-t(df)
 ```
 
 ```{r}
+# Fonction pour calculer les paramètres qu'on cherche à estimer 
 mean_w <- function(df){
   
   mean_1 <- sum(df[,1]*df[,2])/sum(df[,2])
@@ -352,6 +353,7 @@ E_M <- function(vect1, n_iter = 100, mu1_init = 10, mu2_init = 2, sigma1_init = 
 resultats_EM <- E_M(vect1, n_iter = 100)
 print(resultats_EM)
 ```
+
 
 
 
